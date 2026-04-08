@@ -1,4 +1,5 @@
 import os
+import pickle
 import sys
 import pandas as pd
 import numpy as np
@@ -24,22 +25,24 @@ def evaluate_models(X_train, y_train, X_test, y_test, models, params):
     try:
         report = {}
 
-        for i in range(len(models)):
-            model = list(models.values())[i]
-            model_name = list(models.keys())[i]
-            para=params[list(models.keys())[i]]
+        for model_name, model in models.items():
 
-            gs = GridSearchCV(model,para,cv=3)
-            gs.fit(X_train,y_train)
-            
-            model.set_params(**gs.best_params_)
-            model.fit(X_train,y_train)
+            para = params.get(model_name, {})  # 🔥 SAFE
 
-            logging.info(f"Training {model_name}...")
+            from sklearn.model_selection import GridSearchCV
+
+            if para:
+                gs = GridSearchCV(model, para, cv=3)
+                gs.fit(X_train, y_train)
+
+                model.set_params(**gs.best_params_)
+
             model.fit(X_train, y_train)
 
-            logging.info(f"Evaluating {model_name}...")
             y_test_pred = model.predict(X_test)
+
+            from sklearn.metrics import r2_score
+
             test_model_score = r2_score(y_test, y_test_pred)
 
             report[model_name] = test_model_score
@@ -47,4 +50,18 @@ def evaluate_models(X_train, y_train, X_test, y_test, models, params):
         return report
 
     except Exception as e:
+        raise CustomException(e, sys)
+def load_object(file_path):
+    try:
+        print(f"Loading file: {file_path}")
+
+        with open(file_path, "rb") as file_obj:
+            obj = pickle.load(file_obj)
+
+        print(f"Loaded successfully: {file_path}")
+
+        return obj
+
+    except Exception as e:
+        print("ERROR WHILE LOADING:", e)
         raise CustomException(e, sys)
